@@ -1,6 +1,7 @@
 package global
 
 import (
+	"fmt"
 	"youke/global/config"
 	cos2 "youke/global/cos"
 	"youke/global/database"
@@ -21,6 +22,7 @@ type GlobalData struct {
 var Global *GlobalData
 
 func InitGlobal() {
+	fmt.Printf("服务初始化....")
 	//解析配置文件
 	var configPath = pflag.StringP("config", "c", "config.yaml", "配置文件路径")
 	var err error
@@ -43,5 +45,5 @@ func InitGlobal() {
 	if err != nil {
 		panic(err)
 	}
-
+	fmt.Printf("初始化完成....")
 }
