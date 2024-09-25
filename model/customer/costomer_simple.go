@@ -7,10 +7,10 @@ import (
 )
 
 type CostomerSimple struct {
-	Id           int64  `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增"`
-	Name         string `gorm:"index:name_phone_idx;not null;column:name;type:varchar(20);comment:姓名"`
-	PhoneNumber  string `gorm:"index:name_phone_idx;not null;column:phone_number;type:varchar(15);comment:电话号码"`
-	IdcardNumber string `gorm:"uniqueIndex:idcard_number_uindex;not null;column:idcard_number;type:varchar(18);comment:身份证号"`
+	Id           int64  `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增;omitempty"`
+	Name         string `gorm:"index:name_phone_idx;not null;column:name;type:varchar(20);comment:姓名;omitempty"`
+	PhoneNumber  string `gorm:"index:name_phone_idx;not null;column:phone_number;type:varchar(15);comment:电话号码;omitempty"`
+	IdcardNumber string `gorm:"uniqueIndex:idcard_number_uindex;not null;column:idcard_number;type:varchar(18);comment:身份证号;omitempty"`
 }
 
 // 自定义表名

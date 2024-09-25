@@ -19,12 +19,12 @@ type GlobalData struct {
 	Cos    *cos.Client
 }
 
-var Global *GlobalData
+var Global = &GlobalData{}
 
 func InitGlobal() {
 	fmt.Printf("服务初始化....")
 	//解析配置文件
-	var configPath = pflag.StringP("config", "c", "config.yaml", "配置文件路径")
+	var configPath = pflag.StringP("config", "c", "config.yml", "配置文件路径")
 	var err error
 	Global.Config, err = config.LoadConfig(*configPath)
 	if err != nil {

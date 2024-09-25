@@ -8,14 +8,14 @@ import (
 )
 
 type Model struct {
-	Id           int64     `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增"`
-	CustomerId   int64     `gorm:"not null;column:customer_id;comment:顾客ID"`
-	CustomerName int64     `gorm:"not null;column:customer_name;type:varchar(10);comment:顾客名字"`
-	PhoneNumber  string    `gorm:"not null;column:phone_number;type:varchar(15);comment:电话号码"`
-	RoomNumber   string    `gorm:"not null;column:room_number;type:varchar(10);comment:房间号"`
-	Price        int       `gorm:"not null;column:price;comment:价格"`
-	Ymd          time.Time `gorm:"index:ymd_index;not null;column:ymd;comment:创建日期(不含时分秒)"`
-	CreatedAt    time.Time `gorm:"not null;column:created_at;autoCreateTime;comment:创建时间"`
+	Id           *int64     `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增;omitempty"`
+	CustomerId   *int64     `gorm:"not null;column:customer_id;comment:顾客ID"`
+	CustomerName *int64     `gorm:"not null;column:customer_name;type:varchar(10);comment:顾客名字;omitempty"`
+	PhoneNumber  *string    `gorm:"not null;column:phone_number;type:varchar(15);comment:电话号码;omitempty"`
+	RoomNumber   *string    `gorm:"not null;column:room_number;type:varchar(10);comment:房间号;omitempty"`
+	Price        *int       `gorm:"not null;column:price;comment:价格"`
+	Ymd          *time.Time `gorm:"index:ymd_index;not null;column:ymd;comment:创建日期(不含时分秒);omitempty"`
+	CreatedAt    *time.Time `gorm:"not null;column:created_at;autoCreateTime;comment:创建时间;omitempty"`
 }
 
 // 自定义表名
@@ -34,7 +34,8 @@ func CreateTable(db *gorm.DB) error {
 }
 
 func (m *Model) Full(tx *gorm.DB) {
-	m.Ymd = time.Now().Truncate(24 * time.Hour) // 只保留年月日，去除时分秒
+	ymd := time.Now().Truncate(24 * time.Hour) // 只保留年月日，去除时分秒
+	m.Ymd = &ymd
 }
 
 // 按日期搜索订单
@@ -54,4 +55,13 @@ func SelectByYmd(db *gorm.DB, t string) ([]Model, error) {
 
 func (m *Model) Create(db *gorm.DB) error {
 	return db.Create(m).Error
+}
+
+func IsExcitByPhonenumber(db *gorm.DB, phone string) (bool, error) {
+	var n int64
+	err := db.Where("phone_number = ?", phone).Count(&n).Error
+	if err != nil || n <= 0 {
+		return false, err
+	}
+	return true, nil
 }

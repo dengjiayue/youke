@@ -1,14 +1,9 @@
-package public_db_func
+package public_func
 
 import (
 	"regexp"
 	"strconv"
 	"time"
-	"youke/global"
-
-	jsoniter "github.com/json-iterator/go"
-
-	"gorm.io/gorm"
 )
 
 func IsTime(t string) bool {
@@ -26,43 +21,6 @@ func IsTime(t string) bool {
 	}
 	_, err = time.Parse(time.DateOnly, t)
 	return err == nil
-}
-
-func RangeOfTime(db *gorm.DB, clum string, Range []string) *gorm.DB {
-	switch len(Range) {
-	case 0:
-		break
-	case 1:
-		if IsTime(Range[0]) {
-			db.Where(clum+" >= ?", Range[0])
-		}
-	case 2:
-		if IsTime(Range[0]) {
-			db.Where(clum+" >= ?", Range[0])
-		}
-		if IsTime(Range[1]) {
-			db.Where(clum+" <= ?", Range[1])
-		}
-
-	default:
-		global.Global.Logger.Warning("错误的时间范围长度,时间范围长度必须小于等于2")
-	}
-	return db
-}
-
-// 分页查询
-// 如果你不想跳过任何数据,请从第0页开始查询
-func PageCondition(db *gorm.DB, page, pageSize int) *gorm.DB {
-	offset := page * pageSize
-	return db.Offset(offset).Limit(pageSize)
-}
-
-// true 倒叙; false 正序
-func OrderIsDesc(db *gorm.DB, clum string, desc bool) *gorm.DB {
-	if desc {
-		return db.Order(clum + " DESC")
-	}
-	return db.Order(clum + " ASC")
 }
 
 func CheckPhoneNumber(phone string) bool {
@@ -123,20 +81,4 @@ func check18IDCardChecksum(id string) bool {
 
 	// 比较计算得到的校验码和身份证的第18位
 	return id[17] == checksumTable[checksumIndex] || (id[17] == 'x' && checksumTable[checksumIndex] == 'X')
-}
-
-// 结构体快速映射
-// to : 传递指针变量
-func StructToStruct(val, to interface{}) error {
-	data, err := jsoniter.Marshal(val)
-	if err != nil {
-		return err
-	}
-
-	err = jsoniter.Unmarshal(data, to)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
