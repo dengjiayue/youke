@@ -21,21 +21,72 @@ func New() *Controller {
 
 // 查看某天的订单
 func (c *Controller) SelectOrderByYmd(ctx *gin.Context) {
+	req := &struct {
+		Ymd string
+	}{}
+	err := ctx.Bind(req)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	resp, err := model_order.SelectByYmd(global.Global.Db, req.Ymd)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	public_func.Success(ctx, resp)
 
 }
 
 // 顾客简略搜索
 func (c *Controller) SelectCostomerSimple(ctx *gin.Context) {
+	req := &model_customer.CostomerSimple{}
+	err := ctx.Bind(req)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	data, count, err := model_customer.SelectCostomerSimple(global.Global.Db, req)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	resp := gin.H{"Data": data, "Count": count}
+	public_func.Success(ctx, resp)
 
 }
 
 // 查看顾客详情
 func (c *Controller) SelectCostomerById(ctx *gin.Context) {
+	req := &struct{ Id int64 }{}
+	err := ctx.Bind(req)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	resp, err := model_customer.SelectById(global.Global.Db, req.Id)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	public_func.Success(ctx, resp)
 
 }
 
 // 身份证识别
-func (c *Controller) IdCardRecognitionAndCreateCostomer(ctx *gin.Context) {
+func (c *Controller) IdCardRecognition(ctx *gin.Context) {
 
 	req := &struct {
 		IdCardBase64 string //身份证图片base64编码
@@ -177,24 +228,63 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 		global.Global.Db.Model(&model_customer.Model{}).Where("id = ?", req.ChildId).Update("guardian_id", customer.Id)
 	}
 
+	public_func.Success(ctx, "ok")
+
 }
 
 // 一键登记顾客
 func (c *Controller) CreatOrder(ctx *gin.Context) {
+	req := &struct {
+		CustomerId int64
+		Roomnumber string
+	}{}
+
+	err := ctx.Bind(req)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	// 查询顾客信息
+	var data model_customer.Model
+	err = global.Global.Db.Select("name,phone_number").Where("id=?", req.CustomerId).First(&data).Error
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	// 记录订单
+	ymd := time.Now().Truncate(24 * time.Hour)
+	order := &model_order.Model{
+		CustomerId:   &req.CustomerId,
+		CustomerName: data.Name,
+		PhoneNumber:  data.PhoneNumber,
+		Ymd:          &ymd,
+	}
+	err = order.Create(global.Global.Db)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	public_func.Success(ctx, "ok")
 
 }
 
-// 更新顾客与订单
-func (c *Controller) UpdateOrderAndUpdateCostomer(ctx *gin.Context) {
+// // 更新顾客与订单
+// func (c *Controller) UpdateOrderAndUpdateCostomer(ctx *gin.Context) {
 
-}
+// }
 
-// 更新顾客信息
-func (c *Controller) UpdateCostomer(ctx *gin.Context) {
+// // 更新顾客信息
+// func (c *Controller) UpdateCostomer(ctx *gin.Context) {
 
-}
+// }
 
-// 一键修改订单(换房/价格)
-func (c *Controller) UpdateOrder(ctx *gin.Context) {
+// // 一键修改订单(换房/价格)
+// func (c *Controller) UpdateOrder(ctx *gin.Context) {
 
-}
+// }

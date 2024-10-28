@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"youke/global"
 	"youke/model"
+	"youke/src/router"
 )
 
 func Init() {
@@ -17,4 +18,6 @@ func main() {
 	Init()
 
 	fmt.Printf("--------------------------\n-------server start-------\n--------------------------")
+
+	router.Run()
 }
