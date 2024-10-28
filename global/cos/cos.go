@@ -44,15 +44,15 @@ func UploadFile(client *cos.Client, file io.Reader, fileSize int64, objectKey st
 	// 根据文件大小判断是否使用分块上传
 	if fileSize <= chunkSize {
 		// 如果文件较小，使用简单上传
-		return simpleUpload(client, file, objectKey)
+		return SimpleUpload(client, file, objectKey)
 	} else {
 		// 如果文件较大，使用分块上传
-		return multipartUpload(client, file, objectKey)
+		return MultipartUpload(client, file, objectKey)
 	}
 }
 
 // 简单上传方法
-func simpleUpload(client *cos.Client, file io.Reader, objectKey string) (string, error) {
+func SimpleUpload(client *cos.Client, file io.Reader, objectKey string) (string, error) {
 	_, err := client.Object.Put(context.Background(), objectKey, file, nil)
 	if err != nil {
 		return "", err
@@ -64,7 +64,7 @@ func simpleUpload(client *cos.Client, file io.Reader, objectKey string) (string,
 }
 
 // 分块上传方法
-func multipartUpload(client *cos.Client, file io.Reader, objectKey string) (string, error) {
+func MultipartUpload(client *cos.Client, file io.Reader, objectKey string) (string, error) {
 	const chunkSize = 3 * 1024 * 1024 // 每块 3MB
 	var (
 		partNumber     = 1

@@ -10,17 +10,17 @@ import (
 )
 
 type Model struct {
-	Id           *int64     `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增;omitempty"`
-	Name         *string    `gorm:"index:name_idx;not null;column:name;type:varchar(20);comment:姓名;omitempty"`
-	PhoneNumber  *string    `gorm:"index:phone_number_idx;not null;column:phone_number;type:varchar(15);comment:电话号码;omitempty"`
-	FaceImg      *string    `gorm:"not null;column:face_img;type:varchar(255);comment:头像;omitempty"`
-	IdcardImg    *string    `gorm:"not null;column:idcard_img;type:varchar(255);comment:身份证;omitempty"`
-	IdcardNumber *string    `gorm:"uniqueIndex:idcard_number_uindex;not null;column:idcard_number;type:varchar(20);comment:身份证号;omitempty"`
-	Address      *string    `gorm:"not null;column:address;type:varchar(255);comment:地址;omitempty"`
-	Age          *int       `gorm:"not null;column:age;comment:年龄;omitempty"`
-	GuardianId   *int64     `gorm:"not null;column:guardian_id;comment:监护人Id;omitempty"`
-	UpdatedAt    *time.Time `gorm:"not null;column:updated_at;autoUpdateTime;comment:更新时间;omitempty"`
-	CreatedAt    *time.Time `gorm:"not null;column:created_at;autoCreateTime;comment:创建时间;omitempty"`
+	Id           *int64  `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增;omitempty"`
+	Name         *string `gorm:"index:name_idx;not null;column:name;type:varchar(20);comment:姓名;omitempty"`
+	PhoneNumber  *string `gorm:"index:phone_number_idx;not null;column:phone_number;type:varchar(15);comment:电话号码;omitempty"`
+	FaceImg      *string `gorm:"not null;column:face_img;type:varchar(255);comment:头像;omitempty"`
+	IdcardImg    *string `gorm:"not null;column:idcard_img;type:varchar(255);comment:身份证;omitempty"`
+	IdcardNumber *string `gorm:"uniqueIndex:idcard_number_uindex;not null;column:idcard_number;type:varchar(20);comment:身份证号;omitempty"`
+	Address      *string `gorm:"not null;column:address;type:varchar(255);comment:地址;omitempty"`
+	// Age          *int       `gorm:"not null;column:age;comment:年龄;omitempty"`
+	GuardianId *int64     `gorm:"not null;column:guardian_id;comment:监护人Id;omitempty"`
+	UpdatedAt  *time.Time `gorm:"not null;column:updated_at;autoUpdateTime;comment:更新时间;omitempty"`
+	CreatedAt  *time.Time `gorm:"not null;column:created_at;autoCreateTime;comment:创建时间;omitempty"`
 }
 
 // 自定义表名
@@ -72,6 +72,15 @@ func IsExcitOfPhoneNumber(db *gorm.DB, phone string) (bool, error) {
 	return true, nil
 }
 
+func IsExcit(db *gorm.DB) (bool, error) {
+	var n int64
+	err := db.Model(&Model{}).Count(&n).Error
+	if err != nil || n <= 0 {
+		return false, err
+	}
+	return true, nil
+}
+
 // 无记录:创建;有记录更新
 func (m *Model) CreateOrUpdateByPhonenumber(db *gorm.DB) error {
 	if m == nil || m.PhoneNumber == nil || len(*m.PhoneNumber) == 0 || !public_func.CheckPhoneNumber(*m.PhoneNumber) || m.IdcardNumber != nil || len(*m.IdcardNumber) > 0 || public_func.CheckIDCard(*m.IdcardNumber) {
@@ -83,7 +92,33 @@ func (m *Model) CreateOrUpdateByPhonenumber(db *gorm.DB) error {
 	}
 	if ok {
 		//存在:更新
-		err = db.Model(m).Where("idcard_number = ?", *m.PhoneNumber).Updates(m).Error
+		err = db.Model(m).Where("phone_number = ?", *m.PhoneNumber).Updates(m).Error
+		// if err != nil {
+		// 	return err
+		// }
+		// err := db.Model(&model_order.Model).Where("customer_id = ?", m.Id)
+		return err
+	} else {
+		err = m.Create(db)
+		return err
+	}
+}
+
+func (m *Model) CreateOrUpdateByIdcardNumber(db *gorm.DB) error {
+	if m == nil || m.PhoneNumber == nil || len(*m.PhoneNumber) == 0 || !public_func.CheckPhoneNumber(*m.PhoneNumber) || m.IdcardNumber != nil || len(*m.IdcardNumber) > 0 || public_func.CheckIDCard(*m.IdcardNumber) {
+		return fmt.Errorf("请求参数有误,请检查电话号码是否完整")
+	}
+
+	var data Model
+	err := db.Where("idcard_number = ?", *m.IdcardNumber).Select("id").First(&data).Error
+	if err != nil {
+		return err
+	}
+
+	if data.Id != nil && *data.Id != 0 {
+		m.Id = data.Id
+		//存在:更新
+		err = db.Model(m).Where("idcard_number = ?", *m.IdcardNumber).Updates(m).Error
 		// if err != nil {
 		// 	return err
 		// }

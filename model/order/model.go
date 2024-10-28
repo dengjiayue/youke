@@ -8,14 +8,14 @@ import (
 )
 
 type Model struct {
-	Id           *int64     `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增;omitempty"`
-	CustomerId   *int64     `gorm:"not null;column:customer_id;comment:顾客ID"`
-	CustomerName *int64     `gorm:"not null;column:customer_name;type:varchar(10);comment:顾客名字;omitempty"`
-	PhoneNumber  *string    `gorm:"not null;column:phone_number;type:varchar(15);comment:电话号码;omitempty"`
-	RoomNumber   *string    `gorm:"not null;column:room_number;type:varchar(10);comment:房间号;omitempty"`
-	Price        *int       `gorm:"not null;column:price;comment:价格"`
-	Ymd          *time.Time `gorm:"index:ymd_index;not null;column:ymd;comment:创建日期(不含时分秒);omitempty"`
-	CreatedAt    *time.Time `gorm:"not null;column:created_at;autoCreateTime;comment:创建时间;omitempty"`
+	Id           *int64  `gorm:"primaryKey;autoIncrement;column:id;comment:主键,自增;omitempty"`
+	CustomerId   *int64  `gorm:"not null;column:customer_id;comment:顾客ID"`
+	CustomerName *string `gorm:"not null;column:customer_name;type:varchar(10);comment:顾客名字;omitempty"`
+	PhoneNumber  *string `gorm:"not null;column:phone_number;type:varchar(15);comment:电话号码;omitempty"`
+	RoomNumber   *string `gorm:"not null;column:room_number;type:varchar(10);comment:房间号;omitempty"`
+	// Price        *int       `gorm:"not null;column:price;comment:价格"`
+	Ymd       *time.Time `gorm:"index:ymd_index;not null;column:ymd;comment:创建日期(不含时分秒);omitempty"`
+	CreatedAt *time.Time `gorm:"not null;column:created_at;autoCreateTime;comment:创建时间;omitempty"`
 }
 
 // 自定义表名

@@ -1,6 +1,7 @@
 package public_func
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"time"
@@ -81,4 +82,31 @@ func check18IDCardChecksum(id string) bool {
 
 	// 比较计算得到的校验码和身份证的第18位
 	return id[17] == checksumTable[checksumIndex] || (id[17] == 'x' && checksumTable[checksumIndex] == 'X')
+}
+
+// 通过身份证号检查是否未成年
+// IsAdultByID 判断身份证号是否成年
+func IsAdultByID(id string) (bool, error) {
+	// 检查身份证号长度
+	if len(id) != 18 {
+		return false, fmt.Errorf("身份证号长度应为18位")
+	}
+
+	// 提取出生日期
+	birthDateStr := id[6:14] // 第7到14位表示出生日期，格式为YYYYMMDD
+	birthDate, err := time.Parse("20060102", birthDateStr)
+	if err != nil {
+		return false, fmt.Errorf("无效的出生日期格式: %v", err)
+	}
+
+	// 计算年龄
+	now := time.Now()
+	age := now.Year() - birthDate.Year()
+	// 如果还没到生日，年龄减1
+	if now.YearDay() < birthDate.YearDay() {
+		age--
+	}
+
+	// 判断是否成年
+	return age >= 18, nil
 }
