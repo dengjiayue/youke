@@ -2,12 +2,15 @@ package router
 
 import (
 	"youke/src/controller"
+	"youke/src/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 func initRouter(engin *gin.Engine) {
 	controller := controller.New()
+	engin.Use(middleware.CORSMiddleware())
+	engin.GET("ping", controller.Ping)
 	engin.POST("CreatOrder", controller.CreatOrder)
 	engin.POST("CreatOrderAndUpdateCostomer", controller.CreatOrderAndUpdateCostomer)
 	engin.POST("SelectCostomerById", controller.SelectCostomerById)

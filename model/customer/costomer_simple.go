@@ -30,11 +30,11 @@ func SelectCostomerSimple(db *gorm.DB, req *CostomerSimple) ([]CostomerSimple, i
 		ok = true
 	}
 	if req.PhoneNumber != "" && len(req.PhoneNumber) > 3 {
-		condition = condition.Where("phone_number LIKE %?", req.PhoneNumber)
+		condition = condition.Where("phone_number LIKE ?", "%"+req.PhoneNumber)
 		ok = true
 	}
 	if req.IdcardNumber != "" && len(req.IdcardNumber) > 3 {
-		condition = condition.Where("name LIKE %?", req.Name)
+		condition = condition.Where("idcard_number LIKE ?", "%"+req.IdcardNumber)
 		ok = true
 	}
 	if !ok {

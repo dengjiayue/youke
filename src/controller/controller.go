@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"mime/multipart"
 	"time"
 	"youke/global"
@@ -17,6 +18,11 @@ type Controller struct{}
 
 func New() *Controller {
 	return &Controller{}
+}
+
+func (c *Controller) Ping(ctx *gin.Context) {
+	fmt.Printf("ping seccess")
+	ctx.String(200, "pong")
 }
 
 // 查看某天的订单
@@ -90,7 +96,6 @@ func (c *Controller) IdCardRecognition(ctx *gin.Context) {
 
 	req := &struct {
 		IdCardBase64 string //身份证图片base64编码
-		PhoneNumber  string //电话号码(用户唯一标记)
 	}{}
 
 	err := ctx.Bind(req)
@@ -117,14 +122,14 @@ func (c *Controller) IdCardRecognition(ctx *gin.Context) {
 	resp := &struct {
 		HeadImg []byte
 		Name    string `json:"Name"`
-		Age     int
+		// Age     int
 		Address string `json:"Address"`
 		IdNum   string `json:"IdNum"`
 		IsAdult bool
 	}{
 		idCardInfo.HeadImg,
 		idCardInfo.Name,
-		idCardInfo.Age,
+		// idCardInfo.Age,
 		idCardInfo.Address,
 		idCardInfo.IdNum,
 		isAdult,
@@ -136,7 +141,8 @@ func (c *Controller) IdCardRecognition(ctx *gin.Context) {
 
 // 新增顾客登记
 func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
-	req := struct {
+	fmt.Printf("登记\n")
+	req := &struct {
 		ChildId      int64                 `form:"child_id"`                       //被监护人id(只需要绑定监护人时提供)
 		RoomNumber   string                `form:"room_number" binding:"required"` //房间号为 "0",表示只登记, 不产生订单(只登记接口/监护人登记接口使用)
 		Name         string                `form:"name" binding:"required"`
@@ -153,6 +159,7 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 		public_func.Fail(ctx, public_func.CommonERR, err)
 		return
 	}
+	fmt.Printf("req=%#v\n", req)
 
 	//检查输入
 	if len(req.RoomNumber) == 0 || len(req.Name) == 0 || len(req.PhoneNumber) == 0 || req.FaceImg == nil || req.IdcardImg == nil || len(req.IdcardNumber) == 0 || len(req.Address) == 0 {
@@ -171,7 +178,7 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 			return
 		}
 
-		faceUrl, err = cos.UploadFile(global.Global.Cos, r, req.IdcardImg.Size, req.IdcardNumber+"-c")
+		idcardUrl, err = cos.UploadFile(global.Global.Cos, r, req.IdcardImg.Size, req.IdcardNumber+"-c.jpg")
 		if err != nil {
 			global.Global.Logger.Error(err)
 			public_func.Fail(ctx, public_func.CommonERR, err)
@@ -186,13 +193,14 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 			return
 		}
 
-		idcardUrl, err = cos.UploadFile(global.Global.Cos, r, req.FaceImg.Size, req.IdcardNumber+"-f")
+		faceUrl, err = cos.UploadFile(global.Global.Cos, r, req.FaceImg.Size, req.IdcardNumber+"-f.jpg")
 		if err != nil {
 			global.Global.Logger.Error(err)
 			public_func.Fail(ctx, public_func.CommonERR, err)
 			return
 		}
 	}
+	fmt.Printf("faceurl=%#v\n", faceUrl)
 
 	//记录顾客数据
 	customer := &model_customer.Model{
@@ -210,6 +218,7 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 		public_func.Fail(ctx, public_func.CommonERR, err)
 		return
 	}
+	fmt.Printf("登记成功\n")
 
 	//订单记录
 	if req.RoomNumber != "0" {
@@ -221,11 +230,18 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 			public_func.Fail(ctx, public_func.CommonERR, err)
 			return
 		}
+		fmt.Printf("订单已生成\n")
 	}
 
 	//绑定监护人
 	if req.ChildId != 0 {
-		global.Global.Db.Model(&model_customer.Model{}).Where("id = ?", req.ChildId).Update("guardian_id", customer.Id)
+		err = global.Global.Db.Model(&model_customer.Model{}).Where("id = ?", req.ChildId).Update("guardian_id", customer.Id).Error
+		if err != nil {
+			global.Global.Logger.Error(err)
+			public_func.Fail(ctx, public_func.CommonERR, err)
+			return
+		}
+		fmt.Printf("绑定监护人成功\n")
 	}
 
 	public_func.Success(ctx, "ok")
@@ -236,7 +252,7 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 func (c *Controller) CreatOrder(ctx *gin.Context) {
 	req := &struct {
 		CustomerId int64
-		Roomnumber string
+		RoomNumber string
 	}{}
 
 	err := ctx.Bind(req)
@@ -258,6 +274,7 @@ func (c *Controller) CreatOrder(ctx *gin.Context) {
 	// 记录订单
 	ymd := time.Now().Truncate(24 * time.Hour)
 	order := &model_order.Model{
+		RoomNumber:   &req.RoomNumber,
 		CustomerId:   &req.CustomerId,
 		CustomerName: data.Name,
 		PhoneNumber:  data.PhoneNumber,
