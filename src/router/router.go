@@ -17,6 +17,7 @@ func initRouter(engin *gin.Engine) {
 	engin.POST("SelectOrderByYmd", controller.SelectOrderByYmd)
 	engin.POST("SelectCostomerSimple", controller.SelectCostomerSimple)
 	engin.POST("IdCardRecognition", controller.IdCardRecognition)
+	engin.POST("UploadFaceImg", controller.UploadFaceImg)
 }
 
 func Run() {

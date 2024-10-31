@@ -1,8 +1,10 @@
 package ocr_server
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"time"
 	"youke/global"
 	public_db_func "youke/model/public"
@@ -23,7 +25,7 @@ func getConfig() *string {
 }
 
 type OcrIdCardResp struct {
-	HeadImg []byte
+	HeadImg io.Reader
 	Name    string `json:"Name"`
 	Age     int
 	Address string `json:"Address"`
@@ -61,7 +63,7 @@ func IdCardOCR(img string) (*OcrIdCardResp, error) {
 		return nil, fmt.Errorf("返回数据为空")
 	}
 
-	var headImg []byte
+	var headImg io.Reader
 	{
 		headBase64 := ""
 
@@ -70,7 +72,7 @@ func IdCardOCR(img string) (*OcrIdCardResp, error) {
 			if err != nil {
 				global.Global.Logger.Warning(err)
 			} else if len(headBase64) > 0 {
-				headImg, err = ConvertBase64Tobytes(headBase64)
+				headImg, err = ConvertBase64ToReader(headBase64)
 				if err != nil {
 					global.Global.Logger.Warning(err)
 				}
@@ -97,14 +99,14 @@ func IdCardOCR(img string) (*OcrIdCardResp, error) {
 }
 
 // ConvertBase64ToReader 将 Base64 编码的字符串解码为二进制数据
-func ConvertBase64Tobytes(base64Str string) ([]byte, error) {
+func ConvertBase64ToReader(base64Str string) (io.Reader, error) {
 	// 解码 Base64 字符串为二进制数据
 	data, err := base64.StdEncoding.DecodeString(base64Str)
 	if err != nil {
 		return nil, err
 	}
 
-	return data, nil
+	return bytes.NewReader(data), nil
 }
 
 type PortraitResponse struct {

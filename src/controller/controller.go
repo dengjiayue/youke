@@ -91,6 +91,48 @@ func (c *Controller) SelectCostomerById(ctx *gin.Context) {
 
 }
 
+// 上传头像图片
+func (c *Controller) UploadFaceImg(ctx *gin.Context) {
+	req := &struct {
+		IdcardNumber string                `form:"idcard_number" binding:"required"`
+		FaceImg      *multipart.FileHeader `form:"face_img" binding:"required"`
+	}{}
+
+	err := ctx.ShouldBind(req)
+	if err != nil {
+		global.Global.Logger.Error(err)
+		public_func.Fail(ctx, public_func.CommonERR, err)
+		return
+	}
+
+	if req.FaceImg == nil || req.IdcardNumber == "" {
+		global.Global.Logger.Error("参数有误", req)
+		public_func.Fail(ctx, public_func.CommonERR, "参数有误")
+		return
+	}
+
+	//对象存储
+	var faceUrl string
+	{
+		r, err := req.FaceImg.Open()
+		if err != nil {
+			global.Global.Logger.Error(err)
+			public_func.Fail(ctx, public_func.CommonERR, err)
+			return
+		}
+
+		faceUrl, err = cos.UploadFile(global.Global.Cos, r, req.FaceImg.Size, req.IdcardNumber+"-f.jpg")
+		if err != nil {
+			global.Global.Logger.Error(err)
+			public_func.Fail(ctx, public_func.CommonERR, err)
+			return
+		}
+	}
+	// fmt.Printf("faceurl=%#v\n", faceUrl)
+	public_func.Success(ctx, gin.H{"FaceImg": faceUrl})
+
+}
+
 // 身份证识别
 func (c *Controller) IdCardRecognition(ctx *gin.Context) {
 
@@ -119,15 +161,44 @@ func (c *Controller) IdCardRecognition(ctx *gin.Context) {
 		return
 	}
 
+	//对象存储
+	var faceUrl, idcardUrl string
+	{
+		r, err := ocr_server.ConvertBase64ToReader(req.IdCardBase64)
+		if err != nil {
+			global.Global.Logger.Error(err)
+			public_func.Fail(ctx, public_func.CommonERR, err)
+			return
+		}
+
+		idcardUrl, err = cos.UploadFile(global.Global.Cos, r, 0, idCardInfo.IdNum+"-c.jpg")
+		if err != nil {
+			global.Global.Logger.Error(err)
+			public_func.Fail(ctx, public_func.CommonERR, err)
+			return
+		}
+	}
+	{
+		faceUrl, err = cos.UploadFile(global.Global.Cos, idCardInfo.HeadImg, 0, idCardInfo.IdNum+"-f.jpg")
+		if err != nil {
+			global.Global.Logger.Error(err)
+			public_func.Fail(ctx, public_func.CommonERR, err)
+			return
+		}
+	}
+	fmt.Printf("faceurl=%#v\n", faceUrl)
+
 	resp := &struct {
-		HeadImg []byte
-		Name    string `json:"Name"`
+		IdcardImg string
+		HeadImg   string
+		Name      string `json:"Name"`
 		// Age     int
 		Address string `json:"Address"`
 		IdNum   string `json:"IdNum"`
 		IsAdult bool
 	}{
-		idCardInfo.HeadImg,
+		idcardUrl,
+		faceUrl,
 		idCardInfo.Name,
 		// idCardInfo.Age,
 		idCardInfo.Address,
@@ -143,14 +214,15 @@ func (c *Controller) IdCardRecognition(ctx *gin.Context) {
 func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 	fmt.Printf("登记\n")
 	req := &struct {
-		ChildId      int64                 `form:"child_id"`                       //被监护人id(只需要绑定监护人时提供)
-		RoomNumber   string                `form:"room_number" binding:"required"` //房间号为 "0",表示只登记, 不产生订单(只登记接口/监护人登记接口使用)
-		Name         string                `form:"name" binding:"required"`
-		PhoneNumber  string                `form:"phone_number" binding:"required"`
-		FaceImg      *multipart.FileHeader `form:"face_img" binding:"required"`
-		IdcardImg    *multipart.FileHeader `form:"idcard_img" binding:"required"`
-		IdcardNumber string                `form:"idcard_number" binding:"required"`
-		Address      string                `form:"address" binding:"required"`
+		ChildIdNumber string `form:"child_id_number"`                //被监护人身份证号(只需要绑定监护人时提供)
+		RoomNumber    string `form:"room_number" binding:"required"` //房间号为 "0",表示只登记, 不产生订单(只登记接口/监护人登记接口使用)
+		Name          string `form:"name" binding:"required"`
+		PhoneNumber   string `form:"phone_number" binding:"required"`
+		FaceImg       string `form:"face_img" binding:"required"`
+		IdcardImg     string `form:"idcard_img" binding:"required"`
+		IdcardNumber  string `form:"idcard_number" binding:"required"`
+		Address       string `form:"address" binding:"required"`
+		GuardianId    int64  `form:"guardian_id"`
 	}{}
 
 	err := ctx.ShouldBind(req)
@@ -162,54 +234,55 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 	fmt.Printf("req=%#v\n", req)
 
 	//检查输入
-	if len(req.RoomNumber) == 0 || len(req.Name) == 0 || len(req.PhoneNumber) == 0 || req.FaceImg == nil || req.IdcardImg == nil || len(req.IdcardNumber) == 0 || len(req.Address) == 0 {
+	if len(req.RoomNumber) == 0 || len(req.Name) == 0 || len(req.PhoneNumber) == 0 || len(req.IdcardNumber) == 0 || len(req.Address) == 0 {
 		global.Global.Logger.Error(err)
 		public_func.Fail(ctx, public_func.CommonERR, "个人信息不完整,请填写完整提交")
 		return
 	}
 
-	//对象存储
-	var faceUrl, idcardUrl string
-	{
-		r, err := req.IdcardImg.Open()
-		if err != nil {
-			global.Global.Logger.Error(err)
-			public_func.Fail(ctx, public_func.CommonERR, err)
-			return
-		}
+	// //对象存储
+	// var faceUrl, idcardUrl string
+	// {
+	// 	r, err := req.IdcardImg.Open()
+	// 	if err != nil {
+	// 		global.Global.Logger.Error(err)
+	// 		public_func.Fail(ctx, public_func.CommonERR, err)
+	// 		return
+	// 	}
 
-		idcardUrl, err = cos.UploadFile(global.Global.Cos, r, req.IdcardImg.Size, req.IdcardNumber+"-c.jpg")
-		if err != nil {
-			global.Global.Logger.Error(err)
-			public_func.Fail(ctx, public_func.CommonERR, err)
-			return
-		}
-	}
-	{
-		r, err := req.FaceImg.Open()
-		if err != nil {
-			global.Global.Logger.Error(err)
-			public_func.Fail(ctx, public_func.CommonERR, err)
-			return
-		}
+	// 	idcardUrl, err = cos.UploadFile(global.Global.Cos, r, req.IdcardImg.Size, req.IdcardNumber+"-c.jpg")
+	// 	if err != nil {
+	// 		global.Global.Logger.Error(err)
+	// 		public_func.Fail(ctx, public_func.CommonERR, err)
+	// 		return
+	// 	}
+	// }
+	// {
+	// 	r, err := req.FaceImg.Open()
+	// 	if err != nil {
+	// 		global.Global.Logger.Error(err)
+	// 		public_func.Fail(ctx, public_func.CommonERR, err)
+	// 		return
+	// 	}
 
-		faceUrl, err = cos.UploadFile(global.Global.Cos, r, req.FaceImg.Size, req.IdcardNumber+"-f.jpg")
-		if err != nil {
-			global.Global.Logger.Error(err)
-			public_func.Fail(ctx, public_func.CommonERR, err)
-			return
-		}
-	}
-	fmt.Printf("faceurl=%#v\n", faceUrl)
+	// 	faceUrl, err = cos.UploadFile(global.Global.Cos, r, req.FaceImg.Size, req.IdcardNumber+"-f.jpg")
+	// 	if err != nil {
+	// 		global.Global.Logger.Error(err)
+	// 		public_func.Fail(ctx, public_func.CommonERR, err)
+	// 		return
+	// 	}
+	// }
+	// fmt.Printf("faceurl=%#v\n", faceUrl)
 
 	//记录顾客数据
 	customer := &model_customer.Model{
 		Name:         &req.Name,
 		PhoneNumber:  &req.PhoneNumber,
-		FaceImg:      &faceUrl,
-		IdcardImg:    &idcardUrl,
+		FaceImg:      &req.FaceImg,
+		IdcardImg:    &req.IdcardImg,
 		IdcardNumber: &req.IdcardNumber,
 		Address:      &req.Address,
+		GuardianId:   &req.GuardianId,
 	}
 
 	err = customer.CreateOrUpdateByIdcardNumber(global.Global.Db)
@@ -221,7 +294,7 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 	fmt.Printf("登记成功\n")
 
 	//订单记录
-	if req.RoomNumber != "0" {
+	if req.RoomNumber != "0" && req.RoomNumber != "" {
 		ymd := time.Now().Truncate(24 * time.Hour)
 		order := &model_order.Model{RoomNumber: &req.RoomNumber, CustomerId: customer.Id, CustomerName: &req.Name, PhoneNumber: &req.PhoneNumber, Ymd: &ymd}
 		err := order.Create(global.Global.Db)
@@ -234,8 +307,8 @@ func (c *Controller) CreatOrderAndUpdateCostomer(ctx *gin.Context) {
 	}
 
 	//绑定监护人
-	if req.ChildId != 0 {
-		err = global.Global.Db.Model(&model_customer.Model{}).Where("id = ?", req.ChildId).Update("guardian_id", customer.Id).Error
+	if req.ChildIdNumber != "" {
+		err = global.Global.Db.Model(&model_customer.Model{}).Where("idcard_number = ?", req.ChildIdNumber).Update("guardian_id", customer.Id).Error
 		if err != nil {
 			global.Global.Logger.Error(err)
 			public_func.Fail(ctx, public_func.CommonERR, err)

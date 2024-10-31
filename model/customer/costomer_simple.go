@@ -26,7 +26,7 @@ func SelectCostomerSimple(db *gorm.DB, req *CostomerSimple) ([]CostomerSimple, i
 	condition := ClumsOfSimble(db)
 	ok := false
 	if req.Name != "" {
-		condition = condition.Where("name = ?", req.Name)
+		condition = condition.Where("name LIKE ?", req.Name+"%")
 		ok = true
 	}
 	if req.PhoneNumber != "" && len(req.PhoneNumber) > 3 {
